@@ -16,6 +16,7 @@ void setup() {
   myServo.write(90);
 }
 
+
 void loop() {
   digitalWrite(LZR, HIGH);
   IMU::read();
@@ -23,22 +24,46 @@ void loop() {
   double roll = IMU::getRoll();
   static bool tilted = false;
 
+  static double targetAngle = 90.0;
+  static double previousError = 0.0;
+  static double integral = 0.0;
+  static double currentAngle = 90.0;
+
+  const double kp = 1.2;
+  const double ki = 0.01;
+  const double kd = 0.3;
+  const double deadband = 0.5;
+
   if (abs(roll) > 4.0 && !tilted) {
-    myServo.write(roll > 0 ? 60 : 120);
+    targetAngle = (roll > 0) ? 60.0 : 120.0;
     tilted = true;
     Serial.print("Tilted! Roll = "); Serial.println(roll);
   } 
   else if (abs(roll) <= 4.0 && tilted) {
-    myServo.write(90);
+    targetAngle = 90.0;
     tilted = false;
     Serial.print("Back to level. Roll = "); Serial.println(roll);
   }
 
+  double error = targetAngle - currentAngle;
+  if (abs(error) > deadband) {
+    integral += error;
+    double derivative = error - previousError;
+    previousError = error;
+
+    double output = kp * error + ki * integral + kd * derivative;
+    currentAngle = constrain(currentAngle + output, 0, 180);
+    myServo.write(currentAngle);
+  }
+
+  Serial.println("------------------------------------------------------------");
+  Serial.print("Roll: "); Serial.print(IMU::getRoll(), 2);
+  Serial.print("\tPitch: "); Serial.println(IMU::getPitch(), 2);
+  Serial.println("------------------------------------------------------------");
+
   delay(50);
 }
 
-
-  // // طباعة القيم بشكل منظم
   // Serial.println("------------------------------------------------------------");
   // Serial.println("Raw Sensor Data:");
   // Serial.print("Accel [X, Y, Z]: ");
@@ -69,3 +94,26 @@ void loop() {
   // Serial.println("------------------------------------------------------------");
 
   // delay(1000);
+
+
+
+// void loop() {
+//   digitalWrite(LZR, HIGH);
+//   IMU::read();
+
+//   double roll = IMU::getRoll();
+//   static bool tilted = false;
+
+//   if (abs(roll) > 4.0 && !tilted) {
+//     myServo.write(roll > 0 ? 60 : 120);
+//     tilted = true;
+//     Serial.print("Tilted! Roll = "); Serial.println(roll);
+//   } 
+//   else if (abs(roll) <= 4.0 && tilted) {
+//     myServo.write(90);
+//     tilted = false;
+//     Serial.print("Back to level. Roll = "); Serial.println(roll);
+//   }
+
+//   delay(50);
+// }
