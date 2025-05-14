@@ -1,7 +1,7 @@
 #include <Servo.h>
 #include "MPU_KF.h"
 
-#define LZR 2      // ليزر على PIN 2
+#define LZR 6      // ليزر على PIN 2
 #define SVM 5      // سيرفو على PIN 5
 
 Servo myServo;
@@ -17,6 +17,7 @@ void setup() {
 }
 
 void loop() {
+  
   digitalWrite(LZR, HIGH);  // تشغيل الليزر
   IMU::read();              // قراءة بيانات المستشعر
 
