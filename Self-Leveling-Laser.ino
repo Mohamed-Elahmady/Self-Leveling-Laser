@@ -1,8 +1,8 @@
 #include <Servo.h>
 #include "MPU_KF.h"
 
-#define LZR 2
-#define SVM 3
+#define LZR 2      // ليزر على PIN 2
+#define SVM 5      // سيرفو على PIN 5
 
 Servo myServo;
 
@@ -13,38 +13,28 @@ void setup() {
   IMU::init();
   myServo.attach(SVM);
 
-  myServo.write(90);
+  myServo.write(90); // وضعية بداية متوسطة
 }
 
-
 void loop() {
-  digitalWrite(LZR, HIGH);
-  IMU::read();
+  digitalWrite(LZR, HIGH);  // تشغيل الليزر
+  IMU::read();              // قراءة بيانات المستشعر
 
-  double roll = IMU::getRoll();
-  static bool tilted = false;
-
-  static double targetAngle = 90.0;
+  double pitch = IMU::getPitch(); // زاوية الميلان حول محور X
   static double previousError = 0.0;
   static double integral = 0.0;
   static double currentAngle = 90.0;
 
+  // ثوابت الكنترولر PID
   const double kp = 1.2;
   const double ki = 0.01;
   const double kd = 0.3;
   const double deadband = 0.5;
 
-  if (abs(roll) > 4.0 && !tilted) {
-    targetAngle = (roll > 0) ? 60.0 : 120.0;
-    tilted = true;
-    Serial.print("Tilted! Roll = "); Serial.println(roll);
-  } 
-  else if (abs(roll) <= 4.0 && tilted) {
-    targetAngle = 90.0;
-    tilted = false;
-    Serial.print("Back to level. Roll = "); Serial.println(roll);
-  }
+  // خليه يميل مع نفس زاوية الـ pitch
+  double targetAngle = constrain(90.0 + pitch, 0, 180);  // ممكن تستخدم +pitch لو عايزه الاتجاه العكسي
 
+  // التحكم باستخدام PID
   double error = targetAngle - currentAngle;
   if (abs(error) > deadband) {
     integral += error;
@@ -56,9 +46,11 @@ void loop() {
     myServo.write(currentAngle);
   }
 
+  // طباعة القيم للمراقبة
   Serial.println("------------------------------------------------------------");
   Serial.print("Roll: "); Serial.print(IMU::getRoll(), 2);
-  Serial.print("\tPitch: "); Serial.println(IMU::getPitch(), 2);
+  Serial.print("\tPitch: "); Serial.print(pitch, 2);
+  Serial.print("\tServo Angle: "); Serial.println(currentAngle, 2);
   Serial.println("------------------------------------------------------------");
 
   delay(50);
