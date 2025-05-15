@@ -1,7 +1,7 @@
 #include <Servo.h>
 #include "MPU_KF.h"
 
-#define LZR 6      // ليزر على PIN 2
+#define LZR 6      // ليزر على PIN 6
 #define SVM 5      // سيرفو على PIN 5
 
 Servo myServo;
@@ -13,49 +13,59 @@ void setup() {
   IMU::init();
   myServo.attach(SVM);
 
-  myServo.write(90); // وضعية بداية متوسطة
+  myServo.write(92.20); // وضعية بداية متوسطة
 }
 
 void loop() {
-  
-  digitalWrite(LZR, HIGH);  // تشغيل الليزر
-  IMU::read();              // قراءة بيانات المستشعر
+  digitalWrite(LZR, HIGH);
 
-  double pitch = IMU::getPitch(); // زاوية الميلان حول محور X
+  IMU::read();  // قراءة الـ MPU
+  double rawPitch = IMU::getPitch();
+
+  // --- معايرة زاوية pitch ---
+  const double pitchOffset = 9.2921711;  // تعويض انحراف MPU عن الزاوية الفعلية
+  double pitch = rawPitch + pitchOffset;
+
+  // --- PID Constants ---
+  static double currentAngle = 92.20;  // الوضع المبدئي للسيرفو
   static double previousError = 0.0;
   static double integral = 0.0;
-  static double currentAngle = 90.0;
 
-  // ثوابت الكنترولر PID
   const double kp = 1.2;
   const double ki = 0.01;
   const double kd = 0.3;
   const double deadband = 0.5;
 
-  // خليه يميل مع نفس زاوية الـ pitch
-  double targetAngle = constrain(90.0 + pitch, 0, 180);  // ممكن تستخدم +pitch لو عايزه الاتجاه العكسي
+  // --- هدف السيرفو ---
+  double targetAngle = constrain(90.0 + pitch, 0, 180);
 
-  // التحكم باستخدام PID
+  // --- حساب الخطأ ---
   double error = targetAngle - currentAngle;
+
+  // --- تطبيق PID إذا الخطأ خارج الـ deadband ---
   if (abs(error) > deadband) {
     integral += error;
+    integral = constrain(integral, -50, 50);  // الحد من التراكم
+
     double derivative = error - previousError;
     previousError = error;
 
     double output = kp * error + ki * integral + kd * derivative;
-    currentAngle = constrain(currentAngle + output, 0, 180);
+
+    currentAngle += output;
+    currentAngle = constrain(currentAngle, 0, 180);
+
     myServo.write(currentAngle);
   }
 
-  // طباعة القيم للمراقبة
-  Serial.println("------------------------------------------------------------");
-  Serial.print("Roll: "); Serial.print(IMU::getRoll(), 2);
-  Serial.print("\tPitch: "); Serial.print(pitch, 2);
-  Serial.print("\tServo Angle: "); Serial.println(currentAngle, 2);
-  Serial.println("------------------------------------------------------------");
+  // --- مراقبة القيم ---
+  Serial.print("Raw Pitch: "); Serial.print(rawPitch, 2);
+  Serial.print(" | Calibrated Pitch: "); Serial.print(pitch, 2);
+  Serial.print(" | Servo Angle: "); Serial.println(currentAngle, 2);
 
   delay(50);
 }
+
 
   // Serial.println("------------------------------------------------------------");
   // Serial.println("Raw Sensor Data:");
