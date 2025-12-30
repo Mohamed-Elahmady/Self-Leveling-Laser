@@ -141,9 +141,9 @@ videos/
 
 ## 🖼️ Media Showcase
 
-### 📷 System Structure & Hardware
-
-&#x20;
+### 📷 Structure Prototype
+- ![3D View](images/3d_view.jpg)
+- ![All Sides](images/All%20Sides.jpg)
 
 ### 🎥 Demo Videos
 
